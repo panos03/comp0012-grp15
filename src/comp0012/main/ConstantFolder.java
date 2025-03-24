@@ -44,8 +44,14 @@ public class ConstantFolder
 		ConstantPoolGen cpgen = cgen.getConstantPool();
 
 		// Implement your optimization here
+		
         
 		this.optimized = gen.getJavaClass();
+	}
+
+	// Simple folding task
+	private void performConstantFolding(InstructionList instructionList, ConstantPoolGen cpgen) {
+		
 	}
 
 	
