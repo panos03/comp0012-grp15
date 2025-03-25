@@ -5,10 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.function.BinaryOperator;
-import java.util.function.DoubleBinaryOperator;
 import java.util.function.Function;
-import java.util.function.IntBinaryOperator;
-import java.util.function.LongBinaryOperator;
 
 import org.apache.bcel.classfile.ClassParser;
 import org.apache.bcel.classfile.Code;
@@ -17,14 +14,12 @@ import org.apache.bcel.classfile.Method;
 import org.apache.bcel.generic.BranchInstruction;
 import org.apache.bcel.generic.ClassGen;
 import org.apache.bcel.generic.ConstantPoolGen;
-import org.apache.bcel.generic.DCONST;
-import org.apache.bcel.generic.FCONST;
-import org.apache.bcel.generic.ICONST;
+import org.apache.bcel.generic.LDC;
+import org.apache.bcel.generic.LDC2_W;
 import org.apache.bcel.generic.Instruction;
 import org.apache.bcel.generic.InstructionHandle;
 import org.apache.bcel.generic.InstructionList;
 import org.apache.bcel.generic.InstructionTargeter;
-import org.apache.bcel.generic.LCONST;
 import org.apache.bcel.util.InstructionFinder;
 import org.apache.bcel.generic.MethodGen;
 import org.apache.bcel.generic.TargetLostException;
@@ -83,75 +78,71 @@ public class ConstantFolder
 	// TASK 1 - Simple folding
 	private void performConstantFolding(InstructionList il, ConstantPoolGen cpgen) {
         InstructionFinder finder = new InstructionFinder(il);
-
-        // Do folding for each type
-        foldIntegerOperations(finder, il);
-        foldLongOperations(finder, il);
-        foldFloatOperations(finder, il);
-        foldDoubleOperations(finder, il);
+        foldIntegerOperations(finder, il, cpgen);
+        foldLongOperations(finder, il, cpgen);
+        foldFloatOperations(finder, il, cpgen);
+        foldDoubleOperations(finder, il, cpgen);
     }
-
-	// Value extractors as constants, to avoid repeated lambda creation. Need these for generics
-    private static final Function<Instruction, Integer> ICONST_EXTRACTOR = 
-        instr -> ((ICONST) instr).getValue().intValue();
-    private static final Function<Instruction, Long> LCONST_EXTRACTOR = 
-        instr -> ((LCONST) instr).getValue().longValue();
-    private static final Function<Instruction, Float> FCONST_EXTRACTOR = 
-        instr -> ((FCONST) instr).getValue().floatValue();
-    private static final Function<Instruction, Double> DCONST_EXTRACTOR = 
-        instr -> ((DCONST) instr).getValue().doubleValue();
 
 	// Folding methods for each type. Done for add, sub, mul, div, rem ops
-    private void foldIntegerOperations(InstructionFinder finder, InstructionList il) {
-        foldNumericBinaryOp(finder, il, "ICONST ICONST IADD", 
-            (Integer a, Integer b) -> a + b, ICONST.class, ICONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "ICONST ICONST ISUB", 
-            (Integer a, Integer b) -> a - b, ICONST.class, ICONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "ICONST ICONST IMUL", 
-            (Integer a, Integer b) -> a * b, ICONST.class, ICONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "ICONST ICONST IDIV", 
-            (Integer a, Integer b) -> a / b, ICONST.class, ICONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "ICONST ICONST IREM", 
-            (Integer a, Integer b) -> a % b, ICONST.class, ICONST_EXTRACTOR);
+    private void foldIntegerOperations(InstructionFinder finder, InstructionList il, ConstantPoolGen cpgen) {
+        Function<Instruction, Integer> extractor = instr -> (Integer) ((LDC) instr).getValue(cpgen);
+        
+        foldNumericBinaryOp(finder, il, "LDC LDC IADD", 
+            (a, b) -> a + b, LDC.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC LDC ISUB", 
+            (a, b) -> a - b, LDC.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC LDC IMUL", 
+            (a, b) -> a * b, LDC.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC LDC IDIV", 
+            (a, b) -> a / b, LDC.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC LDC IREM", 
+            (a, b) -> a % b, LDC.class, extractor, cpgen);
     }
 
-    private void foldLongOperations(InstructionFinder finder, InstructionList il) {
-        foldNumericBinaryOp(finder, il, "LCONST LCONST LADD", 
-            (Long a, Long b) -> a + b, LCONST.class, LCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "LCONST LCONST LSUB", 
-            (Long a, Long b) -> a - b, LCONST.class, LCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "LCONST LCONST LMUL", 
-            (Long a, Long b) -> a * b, LCONST.class, LCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "LCONST LCONST LDIV", 
-            (Long a, Long b) -> a / b, LCONST.class, LCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "LCONST LCONST LREM", 
-            (Long a, Long b) -> a % b, LCONST.class, LCONST_EXTRACTOR);
+    private void foldLongOperations(InstructionFinder finder, InstructionList il, ConstantPoolGen cpgen) {
+        Function<Instruction, Long> extractor = instr -> (Long) ((LDC2_W) instr).getValue(cpgen);
+        
+        foldNumericBinaryOp(finder, il, "LDC2_W LDC2_W LADD", 
+            (a, b) -> a + b, LDC2_W.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC2_W LDC2_W LSUB", 
+            (a, b) -> a - b, LDC2_W.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC2_W LDC2_W LMUL", 
+            (a, b) -> a * b, LDC2_W.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC2_W LDC2_W LDIV", 
+            (a, b) -> a / b, LDC2_W.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC2_W LDC2_W LREM", 
+            (a, b) -> a % b, LDC2_W.class, extractor, cpgen);
     }
 
-    private void foldFloatOperations(InstructionFinder finder, InstructionList il) {
-        foldNumericBinaryOp(finder, il, "FCONST FCONST FADD", 
-            (Float a, Float b) -> a + b, FCONST.class, FCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "FCONST FCONST FSUB", 
-            (Float a, Float b) -> a - b, FCONST.class, FCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "FCONST FCONST FMUL", 
-            (Float a, Float b) -> a * b, FCONST.class, FCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "FCONST FCONST FDIV", 
-            (Float a, Float b) -> a / b, FCONST.class, FCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "FCONST FCONST FREM", 
-            (Float a, Float b) -> a % b, FCONST.class, FCONST_EXTRACTOR);
+    private void foldFloatOperations(InstructionFinder finder, InstructionList il, ConstantPoolGen cpgen) {
+        Function<Instruction, Float> extractor = instr -> (Float) ((LDC) instr).getValue(cpgen);
+        
+        foldNumericBinaryOp(finder, il, "LDC LDC FADD", 
+            (a, b) -> a + b, LDC.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC LDC FSUB", 
+            (a, b) -> a - b, LDC.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC LDC FMUL", 
+            (a, b) -> a * b, LDC.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC LDC FDIV", 
+            (a, b) -> a / b, LDC.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC LDC FREM", 
+            (a, b) -> a % b, LDC.class, extractor, cpgen);
     }
 
-    private void foldDoubleOperations(InstructionFinder finder, InstructionList il) {
-        foldNumericBinaryOp(finder, il, "DCONST DCONST DADD", 
-            (Double a, Double b) -> a + b, DCONST.class, DCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "DCONST DCONST DSUB", 
-            (Double a, Double b) -> a - b, DCONST.class, DCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "DCONST DCONST DMUL", 
-            (Double a, Double b) -> a * b, DCONST.class, DCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "DCONST DCONST DDIV", 
-            (Double a, Double b) -> a / b, DCONST.class, DCONST_EXTRACTOR);
-        foldNumericBinaryOp(finder, il, "DCONST DCONST DREM", 
-            (Double a, Double b) -> a % b, DCONST.class, DCONST_EXTRACTOR);
+    private void foldDoubleOperations(InstructionFinder finder, InstructionList il, ConstantPoolGen cpgen) {
+        Function<Instruction, Double> extractor = instr -> (Double) ((LDC2_W) instr).getValue(cpgen);
+        
+        foldNumericBinaryOp(finder, il, "LDC2_W LDC2_W DADD", 
+            (a, b) -> a + b, LDC2_W.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC2_W LDC2_W DSUB", 
+            (a, b) -> a - b, LDC2_W.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC2_W LDC2_W DMUL", 
+            (a, b) -> a * b, LDC2_W.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC2_W LDC2_W DDIV", 
+            (a, b) -> a / b, LDC2_W.class, extractor, cpgen);
+        foldNumericBinaryOp(finder, il, "LDC2_W LDC2_W DREM", 
+            (a, b) -> a % b, LDC2_W.class, extractor, cpgen);
     }
 
 	// MAIN LOGIC. Generic method to fold for every type
@@ -160,18 +151,19 @@ public class ConstantFolder
         String pattern, 
         BinaryOperator<T> op,
         Class<? extends Instruction> constClass,
-        Function<Instruction, T> valueExtractor
+        Function<Instruction, T> valueExtractor,
+        ConstantPoolGen cpgen
     ) {
-		// Find instances of the pattern
+        // Find instances of the pattern
         for (Iterator<InstructionHandle[]> it = finder.search(pattern); it.hasNext();) {
             InstructionHandle[] match = it.next();
-			// Extract the values from the instructions and apply the operation
+            // Extract the values from the instructions and apply the operation
             T val1 = valueExtractor.apply(match[0].getInstruction());
             T val2 = valueExtractor.apply(match[1].getInstruction());
             T result = op.apply(val1, val2);
-			// Replace the old instruction sequence with the result
+            // Replace the old instruction sequence with the result
             try {
-                replaceWithConstant(il, match[0], match[2], createConstant(result, constClass));
+                replaceWithConstant(il, match[0], match[2], createConstant(result, constClass, cpgen));
             } catch (TargetLostException e) {
                 System.err.println("Skipping folding due to unresolved branches");
             }
@@ -179,15 +171,19 @@ public class ConstantFolder
     }
 
 	// Make the new constant, of correct type
-    private Instruction createConstant(Object value, Class<? extends Instruction> constClass) {
-        if (constClass == ICONST.class) {
-            return new ICONST((Integer) value);
-        } else if (constClass == LCONST.class) {
-            return new LCONST((Long) value);
-        } else if (constClass == FCONST.class) {
-            return new FCONST((Float) value);
-        } else if (constClass == DCONST.class) {
-            return new DCONST((Double) value);
+    private Instruction createConstant(Object value, Class<? extends Instruction> constClass, ConstantPoolGen cpgen) {
+        if (constClass == LDC.class) {
+            if (value instanceof Integer) {
+                return new LDC(cpgen.addInteger((Integer) value));
+            } else if (value instanceof Float) {
+                return new LDC(cpgen.addFloat((Float) value));
+            }
+        } else if (constClass == LDC2_W.class) {
+            if (value instanceof Long) {
+                return new LDC2_W(cpgen.addLong((Long) value));
+            } else if (value instanceof Double) {
+                return new LDC2_W(cpgen.addDouble((Double) value));
+            }
         }
         throw new IllegalArgumentException("Unsupported constant type");
     }
