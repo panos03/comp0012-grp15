@@ -101,7 +101,6 @@ public class ConstantFolder
     private static final Function<Instruction, Double> DCONST_EXTRACTOR = 
         instr -> ((DCONST) instr).getValue().doubleValue();
 
-	// Folding methods for each type. Done for add, sub, mul, div, rem ops
     private void foldIntegerOperations(InstructionFinder finder, InstructionList il) {
         foldNumericBinaryOp(finder, il, "ICONST ICONST IADD", 
             (Integer a, Integer b) -> a + b, ICONST.class, ICONST_EXTRACTOR);
@@ -154,7 +153,7 @@ public class ConstantFolder
             (Double a, Double b) -> a % b, DCONST.class, DCONST_EXTRACTOR);
     }
 
-	// MAIN LOGIC. Generic method to fold for every type
+	// Generic method to fold for every type
     private <T> void foldNumericBinaryOp(
         InstructionFinder finder, InstructionList il,
         String pattern, 
@@ -162,14 +161,11 @@ public class ConstantFolder
         Class<? extends Instruction> constClass,
         Function<Instruction, T> valueExtractor
     ) {
-		// Find instances of the pattern
         for (Iterator<InstructionHandle[]> it = finder.search(pattern); it.hasNext();) {
             InstructionHandle[] match = it.next();
-			// Extract the values from the instructions and apply the operation
             T val1 = valueExtractor.apply(match[0].getInstruction());
             T val2 = valueExtractor.apply(match[1].getInstruction());
             T result = op.apply(val1, val2);
-			// Replace the old instruction sequence with the result
             try {
                 replaceWithConstant(il, match[0], match[2], createConstant(result, constClass));
             } catch (TargetLostException e) {
