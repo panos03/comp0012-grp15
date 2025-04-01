@@ -8,7 +8,8 @@ Testcase: testMethodTwoReturn took 0 sec
 Testcase: testMethodTwoOut took 0.006 sec
 	FAILED
 expected:<true[]
-> but was:<true[]
+> but was:<true[
+]
 >
 junit.framework.AssertionFailedError: expected:<true[]
 > but was:<true[
