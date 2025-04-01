@@ -81,7 +81,7 @@ public class ConstantFolder
                     //Pattern for double operations
                     String doublePattern = "LDC2_W LDC2_W (DADD|DSUB|DMUL|DDIV|DREM)";
                     
-                    //Process integer operations
+                    //Process integer operations (bitwise OR, combine multiple boolean results in case any methods made a change)
                     methodModified |= processIntegerOperations(finder, intPattern, instructionList, cpgen);
                     
                     //Process long operations
